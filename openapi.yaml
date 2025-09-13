@@ -1,0 +1,280 @@
+openapi: 3.0.3
+info:
+  title: Polly-API
+  version: 1.0.0
+  description: API for a poll application with user registration, login, and poll management.
+servers:
+  - url: http://localhost:8000
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "200":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserOut"
+        "400":
+          description: Username already registered
+  /login:
+    post:
+      summary: Login and get JWT token
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        "200":
+          description: JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Token"
+        "400":
+          description: Incorrect username or password
+  /polls:
+    get:
+      summary: Get all polls
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+          description: Number of items to skip
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: Max number of items to return
+      responses:
+        "200":
+          description: List of polls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PollOut"
+    post:
+      summary: Create a new poll
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PollCreate"
+      responses:
+        "200":
+          description: Poll created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollOut"
+        "401":
+          description: Unauthorized
+  /polls/{poll_id}:
+    get:
+      summary: Get a specific poll
+      parameters:
+        - in: path
+          name: poll_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Poll details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollOut"
+        "404":
+          description: Poll not found
+    delete:
+      summary: Delete a poll
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: poll_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Poll deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Poll not found or not authorized
+  /polls/{poll_id}/vote:
+    post:
+      summary: Vote on a poll
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: poll_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteCreate"
+      responses:
+        "200":
+          description: Vote recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteOut"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Poll or option not found
+  /polls/{poll_id}/results:
+    get:
+      summary: Get poll results
+      parameters:
+        - in: path
+          name: poll_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Poll results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollResults"
+        "404":
+          description: Poll not found
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+    UserOut:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+    OptionOut:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        poll_id:
+          type: integer
+    PollCreate:
+      type: object
+      properties:
+        question:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+      required:
+        - question
+        - options
+    PollOut:
+      type: object
+      properties:
+        id:
+          type: integer
+        question:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        owner_id:
+          type: integer
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptionOut"
+    VoteCreate:
+      type: object
+      properties:
+        option_id:
+          type: integer
+      required:
+        - option_id
+    VoteOut:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        option_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    PollResults:
+      type: object
+      properties:
+        poll_id:
+          type: integer
+        question:
+          type: string
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              option_id:
+                type: integer
+              text:
+                type: string
+              vote_count:
+                type: integer

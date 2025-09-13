@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polly - Poll Voting System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Polly - Poll Voting System</h1>
+            <div class="auth-section">
+                <div id="login-form" class="auth-form">
+                    <h3>Login to Vote</h3>
+                    <input type="text" id="username" placeholder="Username" required>
+                    <input type="password" id="password" placeholder="Password" required>
+                    <button onclick="login()">Login</button>
+                    <p>Don't have an account? <a href="#" onclick="showRegister()">Register here</a></p>
+                </div>
+                <div id="register-form" class="auth-form" style="display: none;">
+                    <h3>Register New Account</h3>
+                    <input type="text" id="reg-username" placeholder="Username" required>
+                    <input type="password" id="reg-password" placeholder="Password" required>
+                    <button onclick="register()">Register</button>
+                    <p>Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+                </div>
+                <div id="user-info" style="display: none;">
+                    <p>Welcome, <span id="current-user"></span>!</p>
+                    <button onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="poll-section">
+                <h2>Available Polls</h2>
+                <div id="polls-container">
+                    <p>Loading polls...</p>
+                </div>
+            </div>
+
+            <div class="poll-detail" id="poll-detail" style="display: none;">
+                <h2 id="poll-question"></h2>
+                <div id="poll-options"></div>
+                <div id="vote-status"></div>
+                <div id="poll-results" style="display: none;"></div>
+                <button onclick="goBack()" class="back-btn">← Back to Polls</button>
+            </div>
+        </main>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <script src="api-client.js"></script>
+    <script src="poll-results.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poll Results Viewer - Polly</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .viewer-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .viewer-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .poll-selector {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .poll-input-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .poll-input-group input {
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            min-width: 200px;
+        }
+        
+        .poll-input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .view-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .view-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .view-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            background: #38a169;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            background: #2f855a;
+        }
+        
+        .control-btn.secondary {
+            background: #718096;
+        }
+        
+        .control-btn.secondary:hover {
+            background: #4a5568;
+        }
+        
+        .stats-panel {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .stats-panel h4 {
+            margin: 0 0 10px 0;
+            color: #2d3748;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="viewer-container">
+        <div class="viewer-header">
+            <h1>Poll Results Viewer</h1>
+            <p>View detailed poll results and statistics</p>
+        </div>
+
+        <div class="poll-selector">
+            <h3>Select a Poll to View Results</h3>
+            <div class="poll-input-group">
+                <input type="number" id="poll-id-input" placeholder="Enter Poll ID" min="1">
+                <button class="view-btn" onclick="loadPollResults()">View Results</button>
+                <button class="view-btn" onclick="loadAllPolls()">Browse All Polls</button>
+            </div>
+        </div>
+
+        <div id="polls-list" style="display: none;">
+            <h3>Available Polls</h3>
+            <div id="polls-container"></div>
+        </div>
+
+        <div id="results-container">
+            <div class="controls">
+                <button class="control-btn" onclick="refreshResults()" id="refresh-btn" disabled>🔄 Refresh</button>
+                <button class="control-btn" onclick="exportResults()" id="export-btn" disabled>📊 Export CSV</button>
+                <button class="control-btn" onclick="toggleCharts()" id="charts-btn" disabled>📈 Toggle Charts</button>
+                <button class="control-btn secondary" onclick="clearCache()">🗑️ Clear Cache</button>
+            </div>
+
+            <div id="stats-panel" class="stats-panel" style="display: none;">
+                <h4>Cache Statistics</h4>
+                <div class="stats-grid" id="stats-grid"></div>
+            </div>
+
+            <div id="poll-results-display"></div>
+        </div>
+    </div>
+
+    <script src="api-client.js"></script>
+    <script src="poll-results.js"></script>
+    <script>
+        let currentPollId = null;
+        let showCharts = false;
+
+        // Load poll results by ID
+        async function loadPollResults() {
+            const pollId = document.getElementById('poll-id-input').value;
+            if (!pollId) {
+                alert('Please enter a poll ID');
+                return;
+            }
+
+            currentPollId = parseInt(pollId);
+            await displayPollResults(currentPollId);
+        }
+
+        // Load all polls for browsing
+        async function loadAllPolls() {
+            try {
+                const polls = await apiClient.getPolls();
+                displayPollsList(polls);
+                document.getElementById('polls-list').style.display = 'block';
+            } catch (error) {
+                alert(`Error loading polls: ${error.message}`);
+            }
+        }
+
+        // Display polls list
+        function displayPollsList(polls) {
+            const container = document.getElementById('polls-container');
+            container.innerHTML = polls.map(poll => `
+                <div class="poll-card" onclick="selectPoll(${poll.id})">
+                    <h3>${escapeHtml(poll.question)}</h3>
+                    <p>Poll ID: ${poll.id} | Created: ${new Date(poll.created_at).toLocaleDateString()}</p>
+                    <div class="poll-meta">
+                        <span>Owner: User ${poll.owner_id}</span>
+                        <span class="option-count">${poll.options.length} options</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Select a poll from the list
+        function selectPoll(pollId) {
+            currentPollId = pollId;
+            document.getElementById('poll-id-input').value = pollId;
+            document.getElementById('polls-list').style.display = 'none';
+            displayPollResults(pollId);
+        }
+
+        // Display poll results
+        async function displayPollResults(pollId) {
+            const container = document.getElementById('poll-results-display');
+            const options = {
+                showPercentages: true,
+                showWinner: true,
+                showTotalVotes: true,
+                showCharts: showCharts,
+                compact: false
+            };
+
+            try {
+                await pollResultsManager.displayPollResults(pollId, 'poll-results-display', options);
+                
+                // Enable control buttons
+                document.getElementById('refresh-btn').disabled = false;
+                document.getElementById('export-btn').disabled = false;
+                document.getElementById('charts-btn').disabled = false;
+                
+                // Update stats panel
+                updateStatsPanel();
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="error-message">
+                        <h3>Error Loading Results</h3>
+                        <p>${error.message}</p>
+                        <button onclick="displayPollResults(${pollId})">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Refresh current results
+        async function refreshResults() {
+            if (currentPollId) {
+                await displayPollResults(currentPollId);
+            }
+        }
+
+        // Export results as CSV
+        async function exportResults() {
+            if (currentPollId) {
+                try {
+                    await pollResultsManager.downloadPollResultsAsCSV(currentPollId);
+                } catch (error) {
+                    alert(`Export failed: ${error.message}`);
+                }
+            }
+        }
+
+        // Toggle charts display
+        function toggleCharts() {
+            showCharts = !showCharts;
+            if (currentPollId) {
+                displayPollResults(currentPollId);
+            }
+            document.getElementById('charts-btn').textContent = showCharts ? '📊 Hide Charts' : '📈 Show Charts';
+        }
+
+        // Clear cache
+        function clearCache() {
+            pollResultsManager.clearCache();
+            updateStatsPanel();
+            alert('Cache cleared successfully');
+        }
+
+        // Update statistics panel
+        function updateStatsPanel() {
+            const stats = pollResultsManager.getCacheStats();
+            const statsGrid = document.getElementById('stats-grid');
+            const statsPanel = document.getElementById('stats-panel');
+            
+            statsGrid.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${stats.size}</div>
+                    <div class="stat-label">Cached Polls</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.entries.length}</div>
+                    <div class="stat-label">Cache Entries</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.timeout / 1000}s</div>
+                    <div class="stat-label">Cache Timeout</div>
+                </div>
+            `;
+            
+            statsPanel.style.display = 'block';
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Handle Enter key in poll ID input
+        document.getElementById('poll-id-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadPollResults();
+            }
+        });
+
+        // Initialize the viewer
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Poll Results Viewer initialized');
+            updateStatsPanel();
+        });
+    </script>
+</body>
+</html>
